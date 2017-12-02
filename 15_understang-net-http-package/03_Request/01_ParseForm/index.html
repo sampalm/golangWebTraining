@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>DoingGreat</title>
+    </head>
+    <body>
+        {{if .}}
+        <main>
+            <p><strong>variable names</strong> and values:</p>
+            {{range $key, $value := .}}
+                <p><strong>{{$key}}</strong></p>
+                <ul>{{range $value}}<li>{{.}}</li>{{end}}</ul>
+            {{end}}
+        </main>
+        {{end}}
+
+        <form action="/" method="POST">
+            <input type="text" name="fname" id="fname" placeholder="first name">
+            <input type="submit" name="submit-btn" value="Click me">
+        </form>
+    </body>
+</html>
