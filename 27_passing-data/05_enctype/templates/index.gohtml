@@ -1,0 +1,19 @@
+{{ template "header" }}
+
+<form method="POST" enctype="multipart/form-data">
+    <label>First Name</label>
+    <input type="text" id="firstName" name="first">        
+    <label>Last Name</label>
+    <input type="text" id="lastName" name="last">        
+    <label>Subscribed</label>
+    <input type="checkbox" id="sub" name="subscribe">  
+    <input type="file" id="filetext" name="filetext">  
+    <br>
+    <input type="submit">        
+</form>
+
+{{if .}}
+<p>Body Response: {{.}}</p>
+{{end}}
+
+{{ template "footer"}}
