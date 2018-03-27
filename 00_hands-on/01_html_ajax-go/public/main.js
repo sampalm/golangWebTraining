@@ -16,7 +16,7 @@ search.addEventListener("input", (e) => {
         if (xhr.readyState === 4 && xhr.status === 200){
             const response = xhr.responseText;
             console.log("Received: ", response);
-        } else if(xhr.status === 500) {
+        } else if(xhr.readyState === 4 && xhr.status === 500) {
             console.log("Something went wrong.");
         }
     })
