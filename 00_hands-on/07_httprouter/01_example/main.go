@@ -19,11 +19,12 @@ func index(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	tpl.Execute(w, "Anonymous")
 }
 
-func fooWt(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	fmt.Fprintf(w, "Foo page without params.\n")
-}
-
 func foo(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	if p.ByName("param") == "" {
+		fmt.Fprintf(w, "Foo page without params.\n")
+		return
+	}
+
 	fmt.Fprintf(w, "Foo page, Hello %v", p.ByName("param"))
 }
 
@@ -57,7 +58,7 @@ func init() {
 
 	// Some Handlers e.g
 	router.GET("/", index)
-	router.GET("/foo/", fooWt)
+	router.GET("/foo/", foo)
 	router.GET("/foo/:param", foo)
 	router.GET("/octocat/", gitCat)
 
