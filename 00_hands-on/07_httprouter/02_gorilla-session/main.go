@@ -29,10 +29,13 @@ func index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log.Println(dbUsers)
 	// Check session status
 	session, _ := store.Get(r, "session")
-	if session.Values["logged-in"] == nil || session.Values["logged-in"] == "" {
+	if session.Values["log-in"] == nil || session.Values["log-in"] == "" {
+
 		tpl.ExecuteTemplate(w, "index.html", nil)
 		return
 	}
+
+	session.Save(r, w)
 
 	tpl.ExecuteTemplate(w, "index.html", ud)
 }
@@ -40,13 +43,24 @@ func index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 func profile(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	// Check session status
 	session, _ := store.Get(r, "session")
-	if session.Values["logged-in"] == nil || session.Values["logged-in"] == "" {
+	if session.Values["log-in"] == nil || session.Values["log-in"] == "" {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
-	tpl.ExecuteTemplate(w, "user-page.html", nil)
-	return
+	var user UserData
+	email := fmt.Sprintf("%s", session.Values["email"])
+
+	if u, ok := dbUsers[email]; ok {
+		user = u
+	} else {
+		http.Error(w, "Access Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	session.Save(r, w)
+
+	tpl.ExecuteTemplate(w, "user-page.html", user)
 	// TODO: Check if session is valid and if users exists
 
 }
@@ -54,10 +68,12 @@ func profile(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 func sign(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	// Check session status
 	session, _ := store.Get(r, "session")
-	if session.Values["logged-in"] == nil || session.Values["logged-in"] == "" {
+	if session.Values["log-in"] == nil || session.Values["log-in"] == "" {
 		tpl.ExecuteTemplate(w, "sign-up.html", nil)
 		return
 	}
+
+	session.Save(r, w)
 
 	fmt.Fprintf(w, "Your email: %v", session.Values["email"])
 
@@ -69,41 +85,58 @@ func sign(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 func createAccount(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	// Check session status
 	session, _ := store.Get(r, "session")
-	if session.Values["logged-in"] != nil || session.Values["logged-in"] != "" {
-		log.Println("dbUsers: ", dbUsers)
-		log.Printf("Login: %v,\t Email: %v", session.Values["logged-in"], session.Values["email"])
-		// http.Redirect(w, r, "/profile/", http.StatusSeeOther)
-		return
-	}
+	if r.FormValue("email") != "" {
+		// Create account
+		ud := UserData{
+			Firstname: r.FormValue("first"),
+			Lastname:  r.FormValue("last"),
+			Email:     r.FormValue("email"),
+			Password:  r.FormValue("password"),
+		}
+		dbUsers[ud.Email] = ud
 
-	// Check formValues
-	if r.FormValue("email") == "" || r.FormValue("password") == "" {
-		http.Error(w, "Insuficient information.", http.StatusBadRequest)
-		return
+		// Create session
+		session.Values["email"] = ud.Email
+		session.Values["log-in"] = true
 	}
-
-	// Create account
-	ud := UserData{
-		Firstname: r.FormValue("first"),
-		Lastname:  r.FormValue("last"),
-		Email:     r.FormValue("email"),
-		Password:  r.FormValue("password"),
-	}
-	dbUsers[ud.Email] = ud
-
-	// Create session
-	session.Values["email"] = ud.Email
-	session.Values["logged-in"] = 1
 
 	// Save session
 	session.Save(r, w)
-	return
+	http.Redirect(w, r, "/profile/", http.StatusSeeOther)
 }
 func login(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	session, _ := store.Get(r, "session")
 
+	// Get email if exists
+	if email := r.FormValue("email"); email != "" {
+		// Check if account already exists
+		if u, ok := dbUsers[email]; ok {
+			// Check if password match
+			if u.Password == r.FormValue("password") {
+				session.Values["email"] = r.FormValue("email")
+				session.Values["log-in"] = true
+			} else {
+				http.Error(w, "Email invalid.", http.StatusUnauthorized)
+				return
+			}
+		} else {
+			http.Error(w, "Account doesn't exists.", http.StatusUnauthorized)
+			return
+		}
+	}
+
+	// Create session and make login
+	session.Save(r, w)
+	http.Redirect(w, r, "/profile/", http.StatusSeeOther)
 }
 func logout(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	session, _ := store.Get(r, "session")
+	if session.Values["log-in"] == true {
+		session.Options.MaxAge = -1
+	}
 
+	session.Save(r, w)
+	http.Redirect(w, r, "/sign/", http.StatusSeeOther)
 }
 
 func init() {
@@ -117,9 +150,9 @@ func init() {
 	router.GET("/sign/", sign)
 	router.GET("/profile/", profile)
 	router.ServeFiles("/public/*filepath", http.Dir("public/"))
+	router.GET("/logout/", logout)
 	//POST METHODS
 	router.POST("/login/", login)
-	router.POST("/logout/", logout)
 	router.POST("/create-account/", createAccount)
 
 	http.Handle("/", router)

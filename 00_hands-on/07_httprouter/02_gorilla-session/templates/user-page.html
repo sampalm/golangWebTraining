@@ -8,9 +8,14 @@
 </head>
 <body>
     <h1>Your Profile: </h1>
+    <p>Go to <a href="/">Home</a> Page.</p>
     <br>
+    {{if .}}
     <div class="account">
-        
+        <p>Name: {{.Firstname}}</p>
+        <p>Lastname: {{.Lastname}}</p>
+        <p>Email: {{.Email}}</p>
     </div>
+    {{end}}
 </body>
 </html>
