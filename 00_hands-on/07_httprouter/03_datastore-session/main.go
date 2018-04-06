@@ -13,7 +13,7 @@ import (
 type templateData struct {
 	Name       string
 	Email      string
-	Subscribed time.Time
+	Subscribed interface{}
 	Role       int
 	errors     []error
 }
@@ -242,6 +242,90 @@ func updateAccount(w http.ResponseWriter, r *http.Request, _ httprouter.Params) 
 	http.Redirect(w, r, "/profile/", http.StatusSeeOther)
 }
 
+func dashboard(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	userSession, err := store.Get(r, "user-session")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if userSession.Values["log-in"] == nil || userSession.Values["log-in"] == false {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+	if userSession.Values["role"].(int) < 2 {
+		http.Error(w, "You don't have access to this page", http.StatusInternalServerError)
+		return
+	}
+	var td []templateData
+	su, err := GetAllAccount(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	for _, u := range su {
+		td = append(td, templateData{u.Name, u.Email, u.Subscribed.Format("_2 Jan 2006"), u.Role, nil})
+	}
+
+	userSession.Save(r, w)
+	tpl.ExecuteTemplate(w, "dashboard.html", td)
+}
+
+func getProfile(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	userSession, err := store.Get(r, "user-session")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if userSession.Values["log-in"] == nil || userSession.Values["log-in"] == false {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+	if ps.ByName("user") == "" {
+		http.Error(w, "We couldn't found this user", http.StatusInternalServerError)
+		return
+	}
+	user, err := GetAccount(r, ps.ByName("user"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	var td templateData
+	td.Name = user.Name
+	td.Email = user.Email
+	td.Role = user.Role
+	td.Subscribed = user.Subscribed.Format("_2 Jan 2006")
+
+	userSession.Save(r, w)
+	tpl.ExecuteTemplate(w, "profile-page.html", td)
+}
+
+func deleteProfile(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	userSession, err := store.Get(r, "user-session")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if userSession.Values["log-in"] == nil || userSession.Values["log-in"] == false {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+	if userSession.Values["role"].(int) < 2 {
+		http.Error(w, "Page not found 404", http.StatusNotFound)
+		return
+	}
+	if ps.ByName("user") == "" {
+		http.Error(w, "We couldn't found this user", http.StatusInternalServerError)
+		return
+	}
+
+	if deleted, err := DeleteAccount(r, ps.ByName("user")); deleted != true {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	userSession.Save(r, w)
+	http.Redirect(w, r, "/dashboard/", http.StatusSeeOther)
+}
+
 func init() {
 	tpl = template.Must(template.ParseGlob("templates/*.html"))
 
@@ -252,6 +336,9 @@ func init() {
 	router.GET("/profile/", profile)
 	router.GET("/logout/", logout)
 	router.GET("/update-account/", update)
+	router.GET("/dashboard/", dashboard)
+	router.GET("/profile/:user", getProfile)
+	router.GET("/delete/:user", deleteProfile)
 	router.POST("/login/", login)
 	router.POST("/create-account/", createAccount)
 	router.POST("/update-account/", updateAccount)

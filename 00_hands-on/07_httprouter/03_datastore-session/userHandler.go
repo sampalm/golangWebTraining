@@ -34,7 +34,6 @@ func CheckAccount(r *http.Request, email string) (bool, error) {
 	} else {
 		return false, err
 	}
-
 	return false, nil
 }
 
@@ -93,9 +92,15 @@ func GetAccount(r *http.Request, email string) (us User, err error) {
 	return us, nil
 }
 
-// GetAllAccount TODO: This func will get all accounts from datastore and return it only for users with "Role" higher then 1
-func GetAllAccount() {
-
+// GetAllAccount This func get all accounts from datastore and return results only for users with "Role" higher then 1
+func GetAllAccount(r *http.Request) ([]User, error) {
+	var su []User
+	c := appengine.NewContext(r)
+	q := datastore.NewQuery("User")
+	if _, err := q.GetAll(c, &su); err != nil {
+		return nil, err
+	}
+	return su, nil
 }
 
 // UpdateAccount This function will overwrite the entire Entity in datastore with the given data.
@@ -113,7 +118,26 @@ func UpdateAccount(r *http.Request, user User) (bool, error) {
 		return true, nil
 	}
 	//Return nil if non error occurs
-	return false, errors.New("Account doesn't exists or maybe you have forggoten something")
+	return false, errors.New("Account doesn't exist or maybe you have forgotten something")
+}
+
+// DeleteAccount This function will delete any account that match with the given data and that has role smaller then 2 = Administrator.
+func DeleteAccount(r *http.Request, email string) (bool, error) {
+	c := appengine.NewContext(r)
+	key := datastore.NewKey(c, "User", email, 0, nil)
+	if us, err := GetAccount(r, email); err == nil {
+		if us.Role >= 2 {
+			return false, errors.New("You don't have permission for this")
+		}
+		// Try to delete account
+		if err := datastore.Delete(c, key); err != nil {
+			return false, err
+		}
+		// Account was deleted
+		return true, nil
+	}
+	//Return nil if non error occurs
+	return false, errors.New("Account doesn't exist or maybe you have forgotten something")
 }
 
 // HashPassword Generate a secure hash for password
