@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Update Account</title>
+</head>
+<body>
+    <h1>Update account: </h1>
+    <form method="POST">
+        <input type="text" name="first" placeholder="Firstname" value="{{.Name}}">
+        <input type="email" value="{{.Email}}" disabled>
+        <input type="text" value="Role: {{.Role}}" disabled>
+        <input type="text" value="Subscribed: {{.Subscribed}}" disabled>
+        <input type="password" name="old-password" placeholder="Password">
+        <input type="password" name="password" placeholder="New password">
+        <input type="password" name="password2" placeholder="New password Confirm">        
+        <br>
+        <button type="submit">Update</button>
+    </form>
+    <br><p>Or you can go back to your <a href="/profile">Profile</a>.</p>
+</body>
+</html>

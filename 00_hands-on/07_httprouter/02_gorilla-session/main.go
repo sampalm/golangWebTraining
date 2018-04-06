@@ -116,13 +116,15 @@ func login(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 				session.Values["email"] = r.FormValue("email")
 				session.Values["log-in"] = true
 			} else {
-				http.Error(w, "Email invalid.", http.StatusUnauthorized)
+				http.Error(w, "Invalid Email.", http.StatusUnauthorized)
 				return
 			}
 		} else {
 			http.Error(w, "Account doesn't exists.", http.StatusUnauthorized)
 			return
 		}
+
+		// TODO: Use flashes to set Callback messages
 	}
 
 	// Create session and make login

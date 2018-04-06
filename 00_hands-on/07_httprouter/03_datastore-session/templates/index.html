@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Index Page</title>
+</head>
+<body>
+    <h1>Welcome, to home page.</h1>
+
+    {{if .}}
+    <div class="log-out">
+        <p>You're logged in, you can <a href="/logout">Logout</a>.</p>
+        <p>You also can see your <a href="/profile">Profile</a>.</p>
+    </div>
+    {{else}}
+    <div class="log-in">
+        <p>You're not logged in, you can <a href="/sign/">Login</a>.</p>
+    </div>
+    {{end}}
+</body>
+</html>
