@@ -20,10 +20,10 @@
     <br>
     <form action="/create-account" method="post">
         {{if .}}<p class="messageError">{{.}}</p>{{end}}
-        <input type="text" name="first" placeholder="Firstname">
+        <input type="text" name="first" placeholder="Firstname" required>
         <input type="email" name="email" placeholder="Email" required>
         <input type="password" name="password" placeholder="Password">
-        <input type="password" name="password2" placeholder="Password2">
+        <input type="password" name="password2" placeholder="Confirm Password">
         <br>
         <button type="submit">Create</button>                                
     </form>

@@ -4,6 +4,8 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/sessions"
@@ -38,12 +40,13 @@ func sign(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	userSession, _ := store.Get(r, "user-session")
 	if userSession.Values["log-in"] == nil || userSession.Values["log-in"] == false {
 		// Check if exists errors
-		var messageErr string
+		code := 0
 		if ps.ByName("errors") != "" {
-			messageErr = ps.ByName("errors")
+			param := ps.ByName("errors")
+			code, _ = strconv.Atoi(strings.SplitAfter(param, "=")[1])
 		}
-
-		tpl.ExecuteTemplate(w, "sign-up.html", messageErr)
+		codeErr := StatusCodeText(code)
+		tpl.ExecuteTemplate(w, "sign-up.html", codeErr)
 		return
 	}
 
@@ -91,7 +94,7 @@ func login(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	}
 
 	if r.FormValue("email") == "" || r.FormValue("password") == "" {
-		http.Redirect(w, r, "/sign/error=empty", http.StatusSeeOther)
+		http.Redirect(w, r, "/sign/error=25", http.StatusSeeOther)
 		return
 	}
 
@@ -128,13 +131,13 @@ func createAccount(w http.ResponseWriter, r *http.Request, _ httprouter.Params) 
 		return
 	}
 	if r.FormValue("email") == "" {
-		http.Redirect(w, r, "/sign/error=email", http.StatusSeeOther)
+		http.Redirect(w, r, "/sign/error=10", http.StatusSeeOther)
 		return
 	} else if r.FormValue("password") != r.FormValue("password2") {
-		http.Redirect(w, r, "/sign/error=password", http.StatusSeeOther)
+		http.Redirect(w, r, "/sign/error=21", http.StatusSeeOther)
 		return
 	} else if r.FormValue("password") == "" {
-		http.Redirect(w, r, "/sign/error=password", http.StatusSeeOther)
+		http.Redirect(w, r, "/sign/error=20", http.StatusSeeOther)
 		return
 	}
 
@@ -204,7 +207,7 @@ func updateAccount(w http.ResponseWriter, r *http.Request, _ httprouter.Params) 
 	// Check form values to see what will need to be updated
 	// Verify if Firstname changed or is empty
 	if r.FormValue("first") == "" || len(r.FormValue("first")) < 4 {
-		http.Error(w, "Firstname too short or is empty.", http.StatusInternalServerError)
+		http.Error(w, StatusCodeText(07), http.StatusInternalServerError)
 		return
 	}
 	// Set by default Username to the same from datastore
@@ -215,7 +218,7 @@ func updateAccount(w http.ResponseWriter, r *http.Request, _ httprouter.Params) 
 	}
 	// Check if password was informed and if match
 	if r.FormValue("old-password") == "" || HashPassword(r.FormValue("old-password"), nil) != user.Password {
-		http.Error(w, "Password invalid or is empty.", http.StatusInternalServerError)
+		http.Error(w, StatusCodeText(23), http.StatusInternalServerError)
 		return
 	}
 	// Set password to the same from datastore
@@ -253,7 +256,7 @@ func dashboard(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		return
 	}
 	if userSession.Values["role"].(int) < 2 {
-		http.Error(w, "You don't have access to this page", http.StatusInternalServerError)
+		http.Error(w, StatusCodeText(40), http.StatusInternalServerError)
 		return
 	}
 	var td []templateData
@@ -281,7 +284,7 @@ func getProfile(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 	if ps.ByName("user") == "" {
-		http.Error(w, "We couldn't found this user", http.StatusInternalServerError)
+		http.Error(w, StatusCodeText(30), http.StatusInternalServerError)
 		return
 	}
 	user, err := GetAccount(r, ps.ByName("user"))
@@ -314,7 +317,7 @@ func deleteProfile(w http.ResponseWriter, r *http.Request, ps httprouter.Params)
 		return
 	}
 	if ps.ByName("user") == "" {
-		http.Error(w, "We couldn't found this user", http.StatusInternalServerError)
+		http.Error(w, StatusCodeText(30), http.StatusInternalServerError)
 		return
 	}
 
