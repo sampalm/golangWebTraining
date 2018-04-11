@@ -345,7 +345,6 @@ func init() {
 	router.POST("/login/", login)
 	router.POST("/create-account/", createAccount)
 	router.POST("/update-account/", updateAccount)
-	router.Handler("GET", "/favicon.ico", router.NotFound)
 
 	http.Handle("/", router)
 }
