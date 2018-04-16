@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sign-up Page</title>
+    <style>
+        #signup {
+            display: none;
+        }
+        #signin {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <form action="/login" method="post" id="signin">
+        <h1>Login to your account: </h1>
+        <br>
+        <input type="email" name="email">
+        <input type="password" name="password">
+        <br>
+        <button type="submit">Log in</button>
+        <p>Don't have an account? Sign up <a href="#signup" id="signupBtn">here</a>.</p>
+    </form>
+    <br>
+    <form action="/create-account" method="post" id="signup">
+        <h1>Create your account: </h1>
+        <br>
+        {{if .}}<p class="messageError">{{.}}</p>{{end}}
+        <input type="text" name="first" placeholder="Firstname" required>
+        <input type="email" name="email" placeholder="Email" required>
+        <input type="password" name="password" placeholder="Password">
+        <input type="password" name="password2" placeholder="Confirm Password">
+        <br>
+        <button type="submit">Create</button>  
+        <p>Already have an account? Log in <a href="#signin" id="signinBtn">here</a>.</p>                              
+    </form>
+    <script src="../public/assets/sign.js"></script>
+</body>
+</html>

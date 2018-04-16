@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Dashboard Page</title>
+</head>
+<body>
+    <h1>Dashboard</h1>
+    <p>Welcome Admin, to the Dashboard Page.</p>
+    <p>Here you will be able to modify or delete any user account, also see the statistics about the site.</p>
+    <br>
+    {{if .}}
+    <ul id="users-list">
+        {{range .}}
+        <li>
+            <p>User: {{.Name}}</p>
+            <p>Email: {{.Email}}</p>
+            <p>Role: {{.Role}}</p>
+            <p>See <a href="/profile/{{.Email}}">Profile</a> or <a href="/delete/{{.Email}}">Delete</a> it</p>
+        </li>
+        {{end}}
+    </ul>
+    {{end}}
+</body>
+</html>

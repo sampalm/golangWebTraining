@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>User Page</title>
+</head>
+<body>
+    <h1>Your Profile: </h1>
+    <p>Go to <a href="/">Home</a> Page.</p>
+    <br>
+    {{if .}}
+    <div class="account">
+        <p>Your Email: {{index . "email"}}</p>
+        <p>Your Role: {{index . "role"}}</p>
+        <p><a href="/update-account">Update</a> your account info.</p>
+    </div>
+    {{end}}
+</body>
+</html>
