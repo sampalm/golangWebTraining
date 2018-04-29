@@ -33,7 +33,7 @@ func NewGitOAuth(path string, uID string) *oAuth {
 	// Set app config
 	gitOAuth.ClientID = "88bccd52adcc738aed04"
 	gitOAuth.SecretID = "7888bc468d37fcc61bbae40ba51647aece853f60"
-	gitOAuth.RequestURI = "https://api.github.com/user/emails?access_token="
+	gitOAuth.RequestURI = "https://api.github.com"
 	gitOAuth.TokenURI = "https://github.com/login/oauth/access_token"
 	gitOAuth.AuthURI = "https://github.com/login/oauth/authorize"
 	// Set api config
@@ -42,14 +42,15 @@ func NewGitOAuth(path string, uID string) *oAuth {
 	return &gitOAuth
 }
 
-// AuthResponse returns the body of a request result.
-// Data is a slice of any struct that implements data interface.
-type AuthResponse struct {
-	Body  data
-	Error error
-}
-type data interface {
-	getData() ([]string, error)
+type user struct {
+	ID        int    `json:"id"`
+	Avatar    string `json:"avatar_url"`
+	Profile   string `json:"html_url"`
+	Email     string `json:"email"`
+	Username  string `json:"login"`
+	Name      string `json:"name"`
+	Followers int    `json:"followers"`
+	Following int    `json:"following"`
 }
 type email struct {
 	Email      string `json:"email"`
@@ -72,7 +73,7 @@ func (auth *oAuth) GetAuthURI() (string, error) {
 	values := make(url.Values)
 	values.Add("client_id", auth.ClientID)
 	values.Add("redirect_uri", auth.Path)
-	values.Add("scope", "user:email")
+	values.Add("scope", "user")
 	values.Add("state", auth.State)
 
 	return fmt.Sprintf("%s?%s", auth.AuthURI, values.Encode()), nil
@@ -127,17 +128,45 @@ func (auth *oAuth) GetEmails(ctx context.Context) ([]email, error) {
 	}
 
 	var data []email
+	requestURL := fmt.Sprintf("%s/user/emails?access_token=%s", auth.RequestURI, auth.Token)
 	client := urlfetch.Client(ctx)
-
-	res, err := client.Get(auth.RequestURI + auth.Token)
+	res, err := client.Get(requestURL)
 	if err != nil {
 		return nil, fmt.Errorf("GetAuth GetEmail Error: %v", err)
 	}
 	defer res.Body.Close()
 
-	json.NewDecoder(res.Body).Decode(&data)
+	err = json.NewDecoder(res.Body).Decode(&data)
 	if err != nil {
 		return nil, fmt.Errorf("GetAuth DecodeEmail Error: %v", err)
 	}
+
+	if len(data) == 0 {
+		return nil, fmt.Errorf("GetAuth DataEmail Error: user emails not found")
+	}
 	return data, nil
+}
+
+func (auth *oAuth) GetUser(ctx context.Context) (user, error) {
+	var u user
+	switch {
+	case auth.Token == "":
+		return u, fmt.Errorf("GetAuth Error: oAuth TOKEN undefined, you need to define it before use oAuth requests")
+	case auth.RequestURI == "":
+		return u, fmt.Errorf("GetAuth Error: oAuth RequestURI undefined, you need to define it before use oAuth requests")
+	}
+
+	requestURL := fmt.Sprintf("%s/user?access_token=%s", auth.RequestURI, auth.Token)
+	client := urlfetch.Client(ctx)
+	res, err := client.Get(requestURL)
+	if err != nil {
+		return u, fmt.Errorf("GetAuth GetUser Error: %v", err)
+	}
+	defer res.Body.Close()
+
+	err = json.NewDecoder(res.Body).Decode(&u)
+	if err != nil {
+		return u, fmt.Errorf("GetAuth DecodeUser Error: %v", err)
+	}
+	return u, nil
 }
