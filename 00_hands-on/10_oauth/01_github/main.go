@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/gorilla/sessions"
 
@@ -101,6 +102,9 @@ func oauthHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if authentication url has been changed.
 	if auth.State != response.Get("state") {
 		log.Println(fmt.Errorf("oauthHandler Error: oauth STATE undefined"))
+		session.MaxAge = -1
+		http.SetCookie(w, session)
+		http.Redirect(w, r, "/", 303)
 		return
 	}
 	// Now try to generate a token access
@@ -110,16 +114,32 @@ func oauthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Now we have an api token and we can make requests to the api.
-	// To test we'll get users email
+	// Get user emails
 	emails, err := auth.GetEmails(ctx)
 	if err != nil {
 		log.Println("oauthHandler GetEmails error: " + err.Error())
 		return
 	}
-
-	if len(emails) == 0 {
-		io.WriteString(w, "email not found")
+	// Get user public data
+	user, err := auth.GetUser(ctx)
+	if err != nil {
+		log.Println("oauthHandler GetUserProfile error: " + err.Error())
 		return
 	}
-	io.WriteString(w, "Your email: "+emails[0].Email)
+	io.WriteString(w, `<!DOCTYPE html>
+	<html>
+	<head><title>Github oAuth</title></head>
+	<body>
+	<img src="`+user.Avatar+`" width="150px">
+	<p>`+user.Name+`</p>
+	<p>Email: `+emails[0].Email+`</p>
+	<ol>
+		<li>ID: `+strconv.Itoa(user.ID)+`</li>
+		<li>Username: `+user.Username+`</li>
+		<li>ProfileURL: `+user.Profile+`</li>
+		<li>Following: `+strconv.Itoa(user.Following)+` | Followers: `+strconv.Itoa(user.Followers)+`</li>
+	</ol>
+	</body>
+	</html>
+	`)
 }
