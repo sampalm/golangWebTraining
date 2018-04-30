@@ -113,11 +113,32 @@ func oauthHandler(w http.ResponseWriter, r *http.Request) {
 	// Get access token
 	oauth.Code = values.Get("code")
 	if oauth.Token == "" {
+		log.Printf("ACCESS TOKEN STATUS: %v\n\n", oauth.Token)
 		if err = oauth.GetAccessToken(ctx); err != nil {
-			log.Printf("oauthHandler GetUser Error: %v", err)
+			log.Printf("oauthHandler GetToken Error: %v", err)
 			http.Error(w, "Something went wrong, try again later.", 500)
 			return
 		}
 	}
-
+	// Get user info
+	user, err := oauth.GetUser(ctx)
+	if err != nil {
+		log.Printf("oauthHandler GetUser Error: %v", err)
+		http.Error(w, "Something went wrong, try again later.", 500)
+		return
+	}
+	// Show content body
+	io.WriteString(w, `<!DOCTYPE html>
+		<html>
+		<head><title>Github oAuth</title></head>
+		<body>
+		<img src="`+user.Avatar+`" width="150px">
+		<p>`+user.Name+`</p>
+		<p>Email: `+user.Email+`</p>
+		<ol>
+			<li>ID: `+user.ID+`</li>
+		</ol>
+		</body>
+		</html>
+	`)
 }
