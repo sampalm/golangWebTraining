@@ -83,13 +83,13 @@ func (auth *oAuth) GetAuthURI() (string, error) {
 func (auth *oAuth) GetAccessToken(ctx context.Context) error {
 	switch {
 	case auth.ClientID == "":
-		return fmt.Errorf("GetAuth Error: oAuth ClientID undefined, you need to define it before use oAuth requests")
+		return fmt.Errorf("GetAccessToken Error: oAuth ClientID undefined, you need to define it before use oAuth requests")
 	case auth.SecretID == "":
-		return fmt.Errorf("GetAuth Error: oAuth SecretID undefined, you need to define it before use oAuth requests")
+		return fmt.Errorf("GetAccessToken Error: oAuth SecretID undefined, you need to define it before use oAuth requests")
 	case auth.Code == "":
-		return fmt.Errorf("GetAuth Error: oAuth CODE undefined, you need to define it before use oAuth requests")
+		return fmt.Errorf("GetAccessToken Error: oAuth CODE undefined, you need to define it before use oAuth requests")
 	case auth.State == "":
-		return fmt.Errorf("GetAuth Error: oAuth STATE undefined, you need to define it before use oAuth requests")
+		return fmt.Errorf("GetAccessToken Error: oAuth STATE undefined, you need to define it before use oAuth requests")
 	}
 
 	client := urlfetch.Client(ctx)
@@ -122,9 +122,9 @@ func (auth *oAuth) GetAccessToken(ctx context.Context) error {
 func (auth *oAuth) GetEmails(ctx context.Context) ([]email, error) {
 	switch {
 	case auth.Token == "":
-		return nil, fmt.Errorf("GetAuth Error: oAuth TOKEN undefined, you need to define it before use oAuth requests")
+		return nil, fmt.Errorf("GetEmails Error: oAuth TOKEN undefined, you need to define it before use oAuth requests")
 	case auth.RequestURI == "":
-		return nil, fmt.Errorf("GetAuth Error: oAuth RequestURI undefined, you need to define it before use oAuth requests")
+		return nil, fmt.Errorf("GetEmails Error: oAuth RequestURI undefined, you need to define it before use oAuth requests")
 	}
 
 	var data []email
@@ -132,17 +132,17 @@ func (auth *oAuth) GetEmails(ctx context.Context) ([]email, error) {
 	client := urlfetch.Client(ctx)
 	res, err := client.Get(requestURL)
 	if err != nil {
-		return nil, fmt.Errorf("GetAuth GetEmail Error: %v", err)
+		return nil, fmt.Errorf("GetEmails GetEmail Error: %v", err)
 	}
 	defer res.Body.Close()
 
 	err = json.NewDecoder(res.Body).Decode(&data)
 	if err != nil {
-		return nil, fmt.Errorf("GetAuth DecodeEmail Error: %v", err)
+		return nil, fmt.Errorf("GetEmails DecodeEmail Error: %v", err)
 	}
 
 	if len(data) == 0 {
-		return nil, fmt.Errorf("GetAuth DataEmail Error: user emails not found")
+		return nil, fmt.Errorf("GetEmails DataEmail Error: user emails not found")
 	}
 	return data, nil
 }
@@ -151,22 +151,22 @@ func (auth *oAuth) GetUser(ctx context.Context) (user, error) {
 	var u user
 	switch {
 	case auth.Token == "":
-		return u, fmt.Errorf("GetAuth Error: oAuth TOKEN undefined, you need to define it before use oAuth requests")
+		return u, fmt.Errorf("GetUser Error: oAuth TOKEN undefined, you need to define it before use oAuth requests")
 	case auth.RequestURI == "":
-		return u, fmt.Errorf("GetAuth Error: oAuth RequestURI undefined, you need to define it before use oAuth requests")
+		return u, fmt.Errorf("GetUser Error: oAuth RequestURI undefined, you need to define it before use oAuth requests")
 	}
 
 	requestURL := fmt.Sprintf("%s/user?access_token=%s", auth.RequestURI, auth.Token)
 	client := urlfetch.Client(ctx)
 	res, err := client.Get(requestURL)
 	if err != nil {
-		return u, fmt.Errorf("GetAuth GetUser Error: %v", err)
+		return u, fmt.Errorf("GetUser GetUser Error: %v", err)
 	}
 	defer res.Body.Close()
 
 	err = json.NewDecoder(res.Body).Decode(&u)
 	if err != nil {
-		return u, fmt.Errorf("GetAuth DecodeUser Error: %v", err)
+		return u, fmt.Errorf("GetUser DecodeUser Error: %v", err)
 	}
 	return u, nil
 }
