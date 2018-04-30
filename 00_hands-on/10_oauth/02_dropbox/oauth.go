@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"net/url"
 
 	"google.golang.org/appengine/urlfetch"
@@ -76,14 +77,21 @@ func NewBoxOAuth(path string, uID string) *oAuthV2 {
 }
 
 type user struct {
-	ID        int    `json:"id,account_id"`
-	Avatar    string `json:"avatar_url,profile_photo_url"`
+	ID        int    `json:"account_id"`
+	Avatar    string `json:"avatar_url"`
 	Profile   string `json:"html_url"`
 	Email     string `json:"email"`
-	Username  string `json:"login,given_name"`
-	Name      string `json:"name,display_name"`
+	Username  string `json:"login"`
+	Name      string `json:"name"`
 	Followers int    `json:"followers"`
 	Following int    `json:"following"`
+}
+type userV2 struct {
+	ID       string `json:"account_id"`
+	Name     string `json:"display_name"`
+	Email    string `json:"email"`
+	Location string `json:"country"`
+	Avatar   string `json:"profile_photo_url"`
 }
 type email struct {
 	Email      string `json:"email"`
@@ -268,32 +276,30 @@ func (auth *oAuth) GetUser(ctx context.Context) (user, error) {
 	}
 	return u, nil
 }
-func (auth *oAuthV2) GetUser(ctx context.Context) error {
+func (auth *oAuthV2) GetUser(ctx context.Context) (userV2, error) {
+	var u userV2
 	switch {
 	case auth.Token == "":
-		return fmt.Errorf("GetUserV2 Error: oAuthV2 TOKEN undefined, you need to define it before use oAuthV2 requests")
+		return u, fmt.Errorf("GetUserV2 Error: oAuthV2 TOKEN undefined, you need to define it before use oAuthV2 requests")
 	case auth.RequestURI == "":
-		return fmt.Errorf("GetUser Error: oAuth RequestURI undefined, you need to define it before use oAuth requests")
+		return u, fmt.Errorf("GetUser Error: oAuth RequestURI undefined, you need to define it before use oAuth requests")
 	}
 
-	requestURL := fmt.Sprintf("%s/users/get_current_account?access_token=%s", auth.RequestURI, auth.Token)
 	client := urlfetch.Client(ctx)
-	res, err := client.Get(requestURL)
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/users/get_current_account", auth.RequestURI), nil)
 	if err != nil {
-		return fmt.Errorf("GetUserV2 GetUser Error: %v", err)
+		return u, fmt.Errorf("GetUserV2 RequestGetUser Error: %v", err)
 	}
-	defer res.Body.Close()
+	req.Header.Set("Authorization", "Bearer "+auth.Token)
 
-	bs, err := ioutil.ReadAll(res.Body)
+	res, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("GetUserV2 ReadBODY Error: %v", err)
+		return u, fmt.Errorf("GetUserV2 ClientGetUser Error: %v", err)
 	}
 
-	/*err = json.NewDecoder(res.Body).Decode(&u)
+	err = json.NewDecoder(res.Body).Decode(&u)
 	if err != nil {
-		return fmt.Errorf("GetUserV2 DecodeUser Error: %v", err)
-	}*/
-	log.Printf("ACCESS TOKEN = %v\n\n", auth.Token)
-	log.Printf("CONTENT FOUND = %v\n\n", string(bs))
-	return nil
+		return u, fmt.Errorf("GetUserV2 DecodeUser Error: %v", err)
+	}
+	return u, nil
 }
