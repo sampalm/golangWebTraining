@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"google.golang.org/appengine/urlfetch"
 )
@@ -77,22 +78,13 @@ func NewBoxOAuth(path string, uID string) *oAuthV2 {
 }
 
 type user struct {
-	ID        int    `json:"account_id"`
-	Avatar    string `json:"avatar_url"`
-	Profile   string `json:"html_url"`
-	Email     string `json:"email"`
-	Username  string `json:"login"`
-	Name      string `json:"name"`
-	Followers int    `json:"followers"`
-	Following int    `json:"following"`
+	ID       string
+	Name     string
+	Username string
+	Email    string
+	Avatar   string
 }
-type userV2 struct {
-	ID       string `json:"account_id"`
-	Name     string `json:"display_name"`
-	Email    string `json:"email"`
-	Location string `json:"country"`
-	Avatar   string `json:"profile_photo_url"`
-}
+
 type email struct {
 	Email      string `json:"email"`
 	Verified   bool   `json:"verified"`
@@ -181,13 +173,13 @@ func (auth *oAuth) GetAccessToken(ctx context.Context) error {
 func (auth *oAuthV2) GetAccessToken(ctx context.Context) error {
 	switch {
 	case auth.ClientID == "":
-		return fmt.Errorf("GetAccessToken Error: oAuthV2 ClientID undefined, you need to define it before use oAuth requests")
+		return fmt.Errorf("GetAccessTokenV2 Error: oAuthV2 ClientID undefined, you need to define it before use oAuth requests")
 	case auth.SecretID == "":
-		return fmt.Errorf("GetAccessToken Error: oAuthV2 SecretID undefined, you need to define it before use oAuth requests")
+		return fmt.Errorf("GetAccessTokenV2 Error: oAuthV2 SecretID undefined, you need to define it before use oAuth requests")
 	case auth.Code == "":
-		return fmt.Errorf("GetAccessToken Error: oAuthV2 CODE undefined, you need to define it before use oAuth requests")
+		return fmt.Errorf("GetAccessTokenV2 Error: oAuthV2 CODE undefined, you need to define it before use oAuth requests")
 	case auth.State == "":
-		return fmt.Errorf("GetAccessToken Error: oAuthV2 STATE undefined, you need to define it before use oAuth requests")
+		return fmt.Errorf("GetAccessTokenV2 Error: oAuthV2 STATE undefined, you need to define it before use oAuth requests")
 	}
 
 	// Set URL params
@@ -201,8 +193,8 @@ func (auth *oAuthV2) GetAccessToken(ctx context.Context) error {
 
 	res, err := client.PostForm(auth.TokenURI, values)
 	if err != nil {
-		log.Printf("GetAccessToken POST Error: %v", err)
-		return fmt.Errorf("GetAccessToken POST Error: %v", err)
+		log.Printf("GetAccessTokenV2 POST Error: %v", err)
+		return fmt.Errorf("GetAccessTokenV2 POST Error: %v", err)
 	}
 	defer res.Body.Close()
 	// Get the response content
@@ -213,12 +205,12 @@ func (auth *oAuthV2) GetAccessToken(ctx context.Context) error {
 	}
 	err = json.NewDecoder(res.Body).Decode(&response)
 	if err != nil {
-		log.Printf("GetAccessToken DECODE Error: %v", err)
-		return fmt.Errorf("GetAccessToken DECODE Error: %v", err)
+		log.Printf("GetAccessTokenV2 DECODE Error: %v", err)
+		return fmt.Errorf("GetAccessTokenV2 DECODE Error: %v", err)
 	}
 	if response.Token == "" {
-		log.Printf("GetAccessToken DECODE Error: given access token is invalid")
-		return fmt.Errorf("GetAccessToken DECODE Error: given access token is invalid")
+		log.Printf("GetAccessTokenV2 DECODE Error: given access token is invalid")
+		return fmt.Errorf("GetAccessTokenV2 DECODE Error: given access token is invalid")
 	}
 	auth.Token = response.Token
 	auth.ClientID = response.Account
@@ -254,52 +246,84 @@ func (auth *oAuth) GetEmails(ctx context.Context) ([]email, error) {
 }
 
 func (auth *oAuth) GetUser(ctx context.Context) (user, error) {
-	var u user
+	var u struct {
+		Account     int    `json:"id"`
+		GivenName   string `json:"login"`
+		DisplayName string `json:"name"`
+		Email       string `json:"email"`
+		Avatar      string `json:"avatar_url"`
+		Country     string `json:"location"`
+	}
 	switch {
 	case auth.Token == "":
-		return u, fmt.Errorf("GetUser Error: oAuth TOKEN undefined, you need to define it before use oAuth requests")
+		return user{}, fmt.Errorf("GetUser Error: oAuth TOKEN undefined, you need to define it before use oAuth requests")
 	case auth.RequestURI == "":
-		return u, fmt.Errorf("GetUser Error: oAuth RequestURI undefined, you need to define it before use oAuth requests")
+		return user{}, fmt.Errorf("GetUser Error: oAuth RequestURI undefined, you need to define it before use oAuth requests")
 	}
 
 	requestURL := fmt.Sprintf("%s/user?access_token=%s", auth.RequestURI, auth.Token)
 	client := urlfetch.Client(ctx)
 	res, err := client.Get(requestURL)
 	if err != nil {
-		return u, fmt.Errorf("GetUser GetUser Error: %v", err)
+		return user{}, fmt.Errorf("GetUser GetUser Error: %v", err)
 	}
 	defer res.Body.Close()
 
 	err = json.NewDecoder(res.Body).Decode(&u)
 	if err != nil {
-		return u, fmt.Errorf("GetUser DecodeUser Error: %v", err)
+		return user{}, fmt.Errorf("GetUser DecodeUser Error: %v", err)
 	}
-	return u, nil
+	// Return user data
+	data := user{
+		ID:       strconv.Itoa(u.Account),
+		Name:     u.DisplayName,
+		Username: u.DisplayName,
+		Email:    u.Email,
+		Avatar:   u.Avatar,
+	}
+	return data, nil
 }
-func (auth *oAuthV2) GetUser(ctx context.Context) (userV2, error) {
-	var u userV2
+func (auth *oAuthV2) GetUser(ctx context.Context) (user, error) {
+	var u struct {
+		Account string `json:"account_id"`
+		Name    struct {
+			GivenName   string `json:"given_name"`
+			DisplayName string `json:"display_name"`
+		}
+		Email   string
+		Avatar  string `json:"profile_photo_url"`
+		Country string `json:"country"`
+	}
 	switch {
 	case auth.Token == "":
-		return u, fmt.Errorf("GetUserV2 Error: oAuthV2 TOKEN undefined, you need to define it before use oAuthV2 requests")
+		return user{}, fmt.Errorf("GetUserV2 Error: oAuthV2 TOKEN undefined, you need to define it before use oAuthV2 requests")
 	case auth.RequestURI == "":
-		return u, fmt.Errorf("GetUser Error: oAuth RequestURI undefined, you need to define it before use oAuth requests")
+		return user{}, fmt.Errorf("GetUser Error: oAuth RequestURI undefined, you need to define it before use oAuth requests")
 	}
 
 	client := urlfetch.Client(ctx)
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s/users/get_current_account", auth.RequestURI), nil)
 	if err != nil {
-		return u, fmt.Errorf("GetUserV2 RequestGetUser Error: %v", err)
+		return user{}, fmt.Errorf("GetUserV2 RequestGetUser Error: %v", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+auth.Token)
 
 	res, err := client.Do(req)
 	if err != nil {
-		return u, fmt.Errorf("GetUserV2 ClientGetUser Error: %v", err)
+		return user{}, fmt.Errorf("GetUserV2 ClientGetUser Error: %v", err)
 	}
 
 	err = json.NewDecoder(res.Body).Decode(&u)
 	if err != nil {
-		return u, fmt.Errorf("GetUserV2 DecodeUser Error: %v", err)
+		return user{}, fmt.Errorf("GetUserV2 DecodeUser Error: %v", err)
 	}
-	return u, nil
+	// Return user data
+	data := user{
+		ID:       u.Account,
+		Name:     u.Name.DisplayName,
+		Username: u.Name.DisplayName,
+		Email:    u.Email,
+		Avatar:   u.Avatar,
+	}
+	return data, nil
 }
