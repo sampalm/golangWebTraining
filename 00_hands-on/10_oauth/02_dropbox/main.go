@@ -52,7 +52,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, session)
 	// Create a dropbox aouth
 	redirectURI := fmt.Sprintf("%s/oauth", root)
-	oAuth := NewBoxOAuth(redirectURI, id.String())
+	oAuth := NewBoxOAuth(redirectURI, id.String()) // Change to NewGitOAuth() to use Github api
 	// Create a memcache to save this session
 	ctx := appengine.NewContext(r)
 	_, err = memcache.Get(ctx, session.Value)
@@ -93,7 +93,7 @@ func oauthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get oauth from memcache
-	var oauth *oAuthV2
+	var oauth *oAuthV2 // Change to *oAuth to use github api
 	ctx := appengine.NewContext(r)
 	_, err = memcache.Gob.Get(ctx, session.Value, &oauth)
 	if err != nil {
@@ -113,7 +113,6 @@ func oauthHandler(w http.ResponseWriter, r *http.Request) {
 	// Get access token
 	oauth.Code = values.Get("code")
 	if oauth.Token == "" {
-		log.Printf("ACCESS TOKEN STATUS: %v\n\n", oauth.Token)
 		if err = oauth.GetAccessToken(ctx); err != nil {
 			log.Printf("oauthHandler GetToken Error: %v", err)
 			http.Error(w, "Something went wrong, try again later.", 500)
