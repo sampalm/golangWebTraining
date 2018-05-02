@@ -61,7 +61,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			Key:    session.Value,
 			Object: auth,
 		}); err != nil {
-			log.Printf("**********************************************************\nloginHandler Error: %v\n", err)
+			log.Printf("loginHandler Error: %v\n", err)
 			return
 		}
 	}
