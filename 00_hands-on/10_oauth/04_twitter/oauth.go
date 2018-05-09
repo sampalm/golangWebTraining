@@ -38,7 +38,7 @@ type oAuthV2 struct {
 	SecretID   string // secret app key
 	AuthURI    string
 	RequestURI string // api request url
-	TokenURI   string // token_access request url
+	TokenURI   string // access_token request url
 
 	// Api config
 	Path    string // redirect_uri
@@ -55,7 +55,7 @@ type oAuthV3 struct {
 	SecretID   string // secret app key
 	AuthURI    string
 	RequestURI string // api request url
-	TokenURI   string // token_access request url
+	TokenURI   string // access_token request url
 
 	// Api config
 	Path  string // redirect_uri
@@ -67,19 +67,23 @@ type oAuthV3 struct {
 // oAuthV4 is to use Twitter API
 type oAuthV4 struct {
 	// App config
-	ClientID       string // the app key
-	SecretID       string // secret app key
-	OTokenID       string // app access token
-	OTokenSecretID string // app secret access token
-	AuthURI        string
-	RequestURI     string // api request url
-	RequestToken   string // request oauth_token
-	TokenURI       string // get token_access request url
+	ClientID        string // the app key
+	SecretID        string // secret app key
+	OTokenID        string // app access token
+	OTokenSecretID  string // app secret access token
+	AuthURI         string
+	RequestURI      string // api request url
+	RequestTokenURI string // request oauth_token
+	TokenURI        string // access_token request url
 
 	// Api config
-	Path   string // redirect_uri
-	ANonce string // oauth_nonce ID
-	Token  string
+	Path     string // redirect_uri
+	ANonce   string // oauth_nonce ID
+	Verifier string // oauth_verifier ID
+
+	// User config
+	UserID     string // twitter user_id
+	ScreenName string // twitter screen_name
 }
 
 // NewGitOAuth returns a default config to github api.
@@ -135,8 +139,10 @@ func NewTwitterOAuth(path string, uID string) *oAuthV4 {
 	twitterOAuth.SecretID = "R3WGD7KKxvTWTEKvg5sijLWrB5GQfVRWNCA3hV6NLYOHstYv7C"
 	twitterOAuth.OTokenID = "979769837894426624-sKd8jnpGnIopcY9Y8NGQwPolV939ecv"
 	twitterOAuth.OTokenSecretID = "mAWVDS5Xf0sNje75xzd3nhlOnOlh5csnrnofhpD6fk4Aj"
-	twitterOAuth.AuthURI = "https://api.twitter.com/oauth/authorize"
-	twitterOAuth.RequestToken = "https://api.twitter.com/oauth/request_token"
+	twitterOAuth.AuthURI = "https://api.twitter.com/oauth/authenticate"
+	twitterOAuth.RequestTokenURI = "https://api.twitter.com/oauth/request_token"
+	twitterOAuth.TokenURI = "https://api.twitter.com/oauth/access_token"
+	twitterOAuth.RequestURI = "https://api.twitter.com/1.1"
 	// Set api config
 	twitterOAuth.ANonce = uID
 	twitterOAuth.Path = path
@@ -223,13 +229,12 @@ func (auth *oAuthV4) GetAuthURI(ctx context.Context) (string, error) { // Twitte
 		return "", fmt.Errorf("GetAuthURI Error: oAuthV4 ANonce undefined, you need to define it before use oAuthV4 requests")
 	}
 	// Get oauth_signature and header values
-	sign, values := EncodeSignature(auth)
 	// Set header values
-	header := fmt.Sprintf("OAuth oauth_consumer_key=%s, oauth_nonce=%s, oauth_signature=%s, oauth_signature_method=%s, oauth_timestamp=%s, oauth_token=%s, oauth_version=%s", values.Get("oauth_consumer_key"), values.Get("oauth_nonce"), EncodeParams(sign), values.Get("oauth_signature_method"), values.Get("oauth_timestamp"), values.Get("oauth_token"), values.Get("oauth_version"))
+	header := EncodeNewHeader(EncodeSignature("POST", auth.RequestTokenURI, auth))
 	// Makes client
 	client := urlfetch.Client(ctx)
 	// Makes the http request
-	req, err := http.NewRequest("POST", auth.RequestToken, nil)
+	req, err := http.NewRequest("POST", auth.RequestTokenURI, nil)
 	req.Header.Set("Authorization", header)
 	if err != nil {
 		return "", fmt.Errorf("GetAuthURI Error: %s", err.Error())
@@ -239,16 +244,28 @@ func (auth *oAuthV4) GetAuthURI(ctx context.Context) (string, error) { // Twitte
 		return "", fmt.Errorf("GetAuthURI Error: %s", err.Error())
 	}
 	defer res.Body.Close()
+
+	// RESPONSE BODY
+	if res.StatusCode != 200 {
+		return "", fmt.Errorf("GetAuthURI Error: failed to get response body")
+	}
 	bs, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return "", fmt.Errorf("GetAuthURI Error: %s", err.Error())
 	}
-	// Prints out the response
-	log.Println("HEADER: ", header)
-	log.Println("RESPONSE: ", string(bs))
-
-	return "", fmt.Errorf("GetAuthURI Error: Check your console!") // TODO: Do something with the given access token
-
+	response, err := url.ParseQuery(string(bs))
+	if err != nil {
+		return "", fmt.Errorf("GetAuthURI ParseQuery Error: %s", err.Error())
+	}
+	// SET TOKEN VALUES
+	if response.Get("oauth_callback_confirmed") != "true" {
+		return "", fmt.Errorf("GetAuthURI ParseQuery Error: request not authorized")
+	}
+	auth.OTokenID = response.Get("oauth_token")
+	auth.OTokenSecretID = response.Get("oauth_token_secret")
+	log.Printf("***** LOG OBTAIN A REQUEST TOKEN WITH SUCCESS: TK=%s, STK=%s\n", auth.OTokenID, auth.OTokenSecretID)
+	// RETURN AUTHENTICATE URL TO THE USER
+	return fmt.Sprintf("%s?oauth_token=%s", auth.AuthURI, auth.OTokenID), nil
 }
 
 // GetAccessToken gets the access token to make requests using apis.
@@ -384,6 +401,54 @@ func (auth *oAuthV3) GetAccessToken(ctx context.Context) error {
 	return nil
 }
 
+func (auth *oAuthV4) GetAccessToken(ctx context.Context) error {
+	switch {
+	case auth.ClientID == "":
+		return fmt.Errorf("GetAccessTokenV3 Error: oAuthV4 ClientID undefined, you need to define it before use oAuthV4 requests")
+	case auth.SecretID == "":
+		return fmt.Errorf("GetAccessTokenV3 Error: oAuthV4 SecretID undefined, you need to define it before use oAuthV4 requests")
+	case auth.ANonce == "":
+		return fmt.Errorf("GetAccessTokenV3 Error: oAuthV4 AuthNonce undefined, you need to define it before use oAuthV4 requests")
+	case auth.OTokenID == "":
+		return fmt.Errorf("GetAccessTokenV3 Error: oAuthV4 AccessToken undefined, you need to define it before use oAuthV4 requests")
+	}
+	log.Printf("***** LOG COVERTING THE REQUEST TOKEN [BODY]: OAUTH_TOKEN=%s, OAUTH_SECRET_TOKEN=%s\n", auth.OTokenID, auth.OTokenSecretID)
+	client := urlfetch.Client(ctx)
+	header := EncodeNewHeader(EncodeSignature("POST", auth.RequestTokenURI, auth))
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s?oauth_verifier=%s", auth.TokenURI, auth.Verifier), nil)
+	if err != nil {
+		log.Printf("GetAccessTokenV3 REQUEST Error: %v", err)
+		return fmt.Errorf("GetAccessTokenV3 REQUEST Error: %v", err)
+	}
+	req.Header.Set("Authorization", header)
+	res, err := client.Do(req)
+	if err != nil {
+		log.Printf("GetAccessTokenV3 CLIENT Error: %v", err)
+		return fmt.Errorf("GetAccessTokenV3 CLIENT Error: %v", err)
+	}
+	defer res.Body.Close()
+	bs, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.Printf("GetAccessTokenV3 READBODY Error: %v", err)
+		return fmt.Errorf("GetAccessTokenV3 READBODY Error: %v", err)
+	}
+	log.Println("BODY RESPONSE: ", string(bs))
+	response, err := url.ParseQuery(string(bs))
+	if err != nil {
+		return fmt.Errorf("GetAccessTokenV3 ParseQuery Error: %s", err.Error())
+	}
+	log.Println("QUERY BODY: ", response)
+	// SET TOKEN VALUES
+	auth.OTokenID = response.Get("oauth_token")
+	auth.OTokenSecretID = response.Get("oauth_token_secret")
+	auth.UserID = response.Get("user_id")
+	auth.ScreenName = response.Get("screen_name")
+	log.Printf("***** LOG COVERTING THE REQUEST TOKEN WITH SUCCESS: OTK=%s, STK=%s\n", response.Get("oauth_token"), response.Get("oauth_token_secret"))
+	return nil
+	// TODO: GET QUE USER IDENTITY USING "GET account/verify_credentials"
+
+}
+
 func (auth *oAuth) GetEmails(ctx context.Context) ([]email, error) {
 	switch {
 	case auth.Token == "":
@@ -488,7 +553,47 @@ func (auth *oAuthV2) GetUser(ctx context.Context) (user, error) {
 	data := user{
 		ID:       u.Account,
 		Name:     u.Name.DisplayName,
-		Username: u.Name.DisplayName,
+		Username: u.Name.GivenName,
+		Email:    u.Email,
+		Avatar:   u.Avatar,
+	}
+	return data, nil
+}
+
+func (auth *oAuthV4) GetUser(ctx context.Context) (user, error) {
+	var u struct {
+		Account     string `json:"id_str"`
+		GivenName   string `json:"screen_name"`
+		DisplayName string `json:"name"`
+		Email       string
+		Avatar      string `json:"profile_image_url"`
+		Country     string `json:"location"`
+	}
+
+	switch {
+	case auth.RequestURI == "":
+		return user{}, fmt.Errorf("GetUser Error: oAuthV4 RequestURI undefined, you need to define it before use oAuthV4 requests")
+	case auth.UserID == "":
+		return user{}, fmt.Errorf("GetUser Error: oAuthV4 UserID undefined, you need to define it before use oAuthV4 requests")
+	case auth.ScreenName == "":
+		return user{}, fmt.Errorf("GetUser Error: oAuthV4 ScreenName undefined, you need to define it before use oAuthV4 requests")
+	}
+
+	client := urlfetch.Client(ctx)
+	sign, values := EncodeSignature("GET", fmt.Sprintf("%s/account/verify_credentials.json", auth.RequestURI), auth)
+	res, err := client.Get(EncodeNewHeaderHTTP(fmt.Sprintf("%s/account/verify_credentials.json", auth.RequestURI), sign, values))
+	if err != nil {
+		return user{}, fmt.Errorf("GetUser CLIENT Error: %v", err)
+	}
+	defer res.Body.Close()
+	if err := json.NewDecoder(res.Body).Decode(&u); err != nil {
+		return user{}, fmt.Errorf("GetUser DECODE Error: %v", err)
+	}
+	// Return user data
+	data := user{
+		ID:       u.Account,
+		Name:     u.DisplayName,
+		Username: u.GivenName,
 		Email:    u.Email,
 		Avatar:   u.Avatar,
 	}
