@@ -230,7 +230,7 @@ func (auth *oAuthV4) GetAuthURI(ctx context.Context) (string, error) { // Twitte
 	}
 	// Get oauth_signature and header values
 	// Set header values
-	header := EncodeNewHeader(EncodeSignature("POST", auth.RequestTokenURI, auth))
+	header := EncodeNewHeader(EncodeSignature("POST", auth.RequestTokenURI, auth, nil))
 	// Makes client
 	client := urlfetch.Client(ctx)
 	// Makes the http request
@@ -414,7 +414,7 @@ func (auth *oAuthV4) GetAccessToken(ctx context.Context) error {
 	}
 	log.Printf("***** LOG COVERTING THE REQUEST TOKEN [BODY]: OAUTH_TOKEN=%s, OAUTH_SECRET_TOKEN=%s\n", auth.OTokenID, auth.OTokenSecretID)
 	client := urlfetch.Client(ctx)
-	header := EncodeNewHeader(EncodeSignature("POST", auth.RequestTokenURI, auth))
+	header := EncodeNewHeader(EncodeSignature("POST", auth.RequestTokenURI, auth, nil))
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s?oauth_verifier=%s", auth.TokenURI, auth.Verifier), nil)
 	if err != nil {
 		log.Printf("GetAccessTokenV3 REQUEST Error: %v", err)
@@ -578,9 +578,9 @@ func (auth *oAuthV4) GetUser(ctx context.Context) (user, error) {
 	case auth.ScreenName == "":
 		return user{}, fmt.Errorf("GetUser Error: oAuthV4 ScreenName undefined, you need to define it before use oAuthV4 requests")
 	}
-
 	client := urlfetch.Client(ctx)
-	sign, values := EncodeSignature("GET", fmt.Sprintf("%s/account/verify_credentials.json", auth.RequestURI), auth)
+	params := map[string]string{"include_email": "true"}
+	sign, values := EncodeSignature("GET", fmt.Sprintf("%s/account/verify_credentials.json", auth.RequestURI), auth, params)
 	res, err := client.Get(EncodeNewHeaderHTTP(fmt.Sprintf("%s/account/verify_credentials.json", auth.RequestURI), sign, values))
 	if err != nil {
 		return user{}, fmt.Errorf("GetUser CLIENT Error: %v", err)
