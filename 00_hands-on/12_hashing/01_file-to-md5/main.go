@@ -15,7 +15,9 @@ func main() {
 		return
 	}
 	defer file.Close()
+	st, _ := file.Stat()
 	hash := md5.New()
 	io.Copy(hash, file)
 	fmt.Printf("Hash found: %x\n", hash.Sum(nil))
+	fmt.Println("Size file: ", st.Size())
 }
