@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>IndexPage</title>
+    </head>
+    <body>
+        <form method="POST">
+            <input type="email" name="username" placeholder="email"><br>
+            <input type="text" name="firstname" placeholder="first name"><br>
+            <input type="text" name="lastname" placeholder="last name"><br>   
+            <button type="submit">Submit</button>                   
+        </form>
+
+        {{if .}}
+            Username: {{.Username}}<br>
+            Firstname: {{.Firstname}}<br>
+            Lastname: {{.Lastname}}<br>
+        {{end}}
+    </body>
+</html>
