@@ -9,7 +9,7 @@ import (
 var tpl *template.Template
 
 func init() {
-	tpl = template.Must(template.ParseGlob("./templates/*.gohtml"))
+	tpl = template.Must(template.ParseGlob("./starting-files/templates/*.gohtml"))
 }
 
 func main() {
@@ -17,7 +17,7 @@ func main() {
 	http.HandleFunc("/about", about)
 	http.HandleFunc("/contact", contact)
 	http.HandleFunc("/apply", apply)
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":80", nil)
 }
 
 func index(w http.ResponseWriter, req *http.Request) {

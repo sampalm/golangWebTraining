@@ -29,7 +29,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	<html>
 		<head></head>
 		<body>
-			<a href="/login">Login with Dropbox.</a>
+			<a href="/login">Login with Twitter.</a>
 		</body>
 	</hmtl>	
 	`)
