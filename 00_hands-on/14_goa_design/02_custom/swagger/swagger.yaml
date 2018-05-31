@@ -1,0 +1,156 @@
+consumes:
+- application/json
+- application/xml
+- application/gob
+- application/x-gob
+definitions:
+  Bottle:
+    description: A bottle of distilled (default view)
+    example:
+      brand: Voluptates non excepturi.
+      name: Officia tenetur.
+    properties:
+      brand:
+        description: Bottle brand
+        example: Voluptates non excepturi.
+        type: string
+      name:
+        description: Bottle name
+        example: Officia tenetur.
+        type: string
+    required:
+    - name
+    - brand
+    title: 'Mediatype identifier: application/vnd.bottle+json; view=default'
+    type: object
+  BottleCollection:
+    description: BottleCollection is the media type for an array of Bottle (default
+      view)
+    example:
+    - brand: Voluptates non excepturi.
+      name: Officia tenetur.
+    items:
+      $ref: '#/definitions/Bottle'
+    title: 'Mediatype identifier: application/vnd.bottle+json; type=collection; view=default'
+    type: array
+  CreateBottlePayload:
+    description: A bottle of distilled
+    example:
+      brand: Voluptates non excepturi.
+      name: Officia tenetur.
+    properties:
+      brand:
+        description: Bottle brand
+        example: Voluptates non excepturi.
+        type: string
+      name:
+        description: Bottle name
+        example: Officia tenetur.
+        type: string
+    required:
+    - name
+    - brand
+    title: CreateBottlePayload
+    type: object
+host: localhost:8080
+info:
+  description: A simple goa service
+  title: The virtual wine cellar
+  version: ""
+paths:
+  /bottles/:
+    get:
+      description: Get all bottles
+      operationId: bottle#list
+      produces:
+      - application/vnd.bottle+json; type=collection
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/BottleCollection'
+      schemes:
+      - http
+      summary: list bottle
+      tags:
+      - bottle
+    post:
+      operationId: bottle#create
+      parameters:
+      - description: A bottle of distilled
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/CreateBottlePayload'
+      responses:
+        "201":
+          description: Created
+      schemes:
+      - http
+      summary: create bottle
+      tags:
+      - bottle
+  /bottles/{bottleID}:
+    delete:
+      operationId: bottle#delete
+      parameters:
+      - description: Bottle ID
+        in: path
+        name: bottleID
+        required: true
+        type: integer
+      produces:
+      - application/vnd.bottle+json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Bottle'
+        "404":
+          description: Not Found
+      schemes:
+      - http
+      summary: delete bottle
+      tags:
+      - bottle
+    get:
+      description: Get bottle by id
+      operationId: bottle#show
+      parameters:
+      - description: Bottle ID
+        in: path
+        name: bottleID
+        required: true
+        type: integer
+      produces:
+      - application/vnd.bottle+json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Bottle'
+        "404":
+          description: Not Found
+      schemes:
+      - http
+      summary: show bottle
+      tags:
+      - bottle
+produces:
+- application/json
+- application/xml
+- application/gob
+- application/x-gob
+responses:
+  Created:
+    description: Created
+  NotFound:
+    description: Not Found
+  OK:
+    description: OK
+    schema:
+      $ref: '#/definitions/Bottle'
+schemes:
+- http
+swagger: "2.0"
